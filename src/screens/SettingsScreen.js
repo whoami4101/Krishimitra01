@@ -10,7 +10,6 @@ export default function SettingsScreen() {
   const { language, setLanguage, t } = useLanguage();
   const [notifications, setNotifications] = useState(true);
   const [selectedCrop, setSelectedCrop] = useState('wheat');
-  const [soilThreshold, setSoilThreshold] = useState(30);
 
   const showCropSelector = () => {
     navigation.navigate('CropSelection', {
@@ -23,18 +22,11 @@ export default function SettingsScreen() {
     navigation.navigate('LanguageSelection');
   };
 
-  const showThresholdSelector = () => {
-    Alert.alert(
-      'Soil Moisture Threshold',
-      'Set minimum soil moisture level for alerts',
-      [
-        { text: '20%', onPress: () => setSoilThreshold(20) },
-        { text: '25%', onPress: () => setSoilThreshold(25) },
-        { text: '30%', onPress: () => setSoilThreshold(30) },
-        { text: '35%', onPress: () => setSoilThreshold(35) },
-      ]
-    );
+  const showSubscription = () => {
+    navigation.navigate('Subscription');
   };
+
+
 
   const SettingItem = ({ icon, title, subtitle, onPress, rightComponent }) => (
     <TouchableOpacity style={styles.settingItem} onPress={onPress}>
@@ -57,6 +49,17 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Subscription</Text>
+        
+        <SettingItem
+          icon="card"
+          title="Hardware Packages"
+          subtitle="View available subscription plans"
+          onPress={showSubscription}
+        />
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('farmConfig')}</Text>
         
         <SettingItem
@@ -64,13 +67,6 @@ export default function SettingsScreen() {
           title={t('cropType')}
           subtitle={t(selectedCrop)}
           onPress={showCropSelector}
-        />
-        
-        <SettingItem
-          icon="water"
-          title={t('threshold')}
-          subtitle={`${soilThreshold}% - Alert when below this level`}
-          onPress={showThresholdSelector}
         />
       </View>
 
