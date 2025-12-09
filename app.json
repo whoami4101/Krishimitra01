@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "KrishiMitra",
+    "slug": "krishimitra",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4CAF50"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.krishimitra.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "KrishiMitra needs your location to provide accurate weather forecasts for your farm."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./logo.png",
+        "backgroundColor": "#4CAF50"
+      },
+      "package": "com.krishimitra.app",
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./logo.png"
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "KrishiMitra needs your location to provide accurate weather forecasts for your farm."
+        }
+      ]
+    ]
+  }
+}
