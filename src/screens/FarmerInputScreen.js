@@ -8,6 +8,7 @@ export default function FarmerInputScreen() {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
+  const [mode, setMode] = useState('cloud');
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -52,10 +53,11 @@ export default function FarmerInputScreen() {
     setLoading(true);
     setResults([]);
     try {
-      const analysis = await analyzePestDisease(uri);
+      const analysis = await analyzePestDisease(uri, mode);
       setResults(analysis.results || []);
     } catch (error) {
-      Alert.alert('Error', 'Failed to analyze image');
+      console.log('Analysis error:', error.message);
+      Alert.alert('Error', error.message || 'Failed to analyze image');
     }
     setLoading(false);
   };
@@ -74,6 +76,24 @@ export default function FarmerInputScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Pest & Disease Detection</Text>
         <Text style={styles.subtitle}>AI-powered crop health analysis</Text>
+        
+        <View style={styles.modeSelector}>
+          <TouchableOpacity 
+            style={[styles.modeButton, mode === 'cloud' && styles.modeButtonActive]} 
+            onPress={() => setMode('cloud')}
+          >
+            <Ionicons name="cloud" size={20} color={mode === 'cloud' ? 'white' : '#4CAF50'} />
+            <Text style={[styles.modeButtonText, mode === 'cloud' && styles.modeButtonTextActive]}>Check Using Internet</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.modeButton, mode === 'local' && styles.modeButtonActive]} 
+            onPress={() => setMode('local')}
+          >
+            <Ionicons name="phone-portrait" size={20} color={mode === 'local' ? 'white' : '#4CAF50'} />
+            <Text style={[styles.modeButtonText, mode === 'local' && styles.modeButtonTextActive]}>Check Locally</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
@@ -116,8 +136,8 @@ export default function FarmerInputScreen() {
                     <Text style={styles.confidence}>Confidence: {result.confidence}%</Text>
                     {result.source && (
                       <View style={styles.sourceTag}>
-                        <Ionicons name={result.source === 'local_model' ? 'phone-portrait' : result.source === 'gemini' ? 'sparkles' : 'cloud'} size={12} color="#666" />
-                        <Text style={styles.sourceText}>{result.source === 'local_model' ? 'Local Model' : result.source === 'gemini' ? 'Gemini AI' : 'Google Vision'}</Text>
+                        <Ionicons name={result.source === 'local_model' ? 'phone-portrait' : result.source === 'gemini' ? 'sparkles' : result.source === 'deepseek' ? 'flash' : 'cloud'} size={12} color="#666" />
+                        <Text style={styles.sourceText}>{result.source === 'local_model' ? 'Local Model' : result.source === 'gemini' ? 'Gemini AI' : result.source === 'deepseek' ? 'DeepSeek AI' : 'Google Vision'}</Text>
                       </View>
                     )}
                     {result.rawClass && <Text style={styles.debugInfo}>Class: {result.rawClass}</Text>}
@@ -158,7 +178,12 @@ export default function FarmerInputScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: 'white', padding: 20, paddingTop: 50 },
+  header: { backgroundColor: 'white', padding: 20, paddingTop: 50, paddingBottom: 15 },
+  modeSelector: { flexDirection: 'row', gap: 10, marginTop: 15 },
+  modeButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 8, borderWidth: 2, borderColor: '#4CAF50', backgroundColor: 'white', gap: 8 },
+  modeButtonActive: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
+  modeButtonText: { fontSize: 14, fontWeight: '600', color: '#4CAF50' },
+  modeButtonTextActive: { color: 'white' },
   title: { fontSize: 24, fontWeight: 'bold' },
   subtitle: { fontSize: 16, color: '#666', marginTop: 5 },
   content: { flex: 1 },

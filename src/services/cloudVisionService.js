@@ -1,5 +1,7 @@
 const GOOGLE_VISION_API_KEY = 'AIzaSyBwOQlJm8nKtuhm4jj-kaHRG8DKnx_LKUM';
 const GOOGLE_VISION_URL = `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`;
+const DEEPSEEK_API_KEY = 'sk-2d8f667f14c94b64932b672df2415401';
+const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 const GEMINI_API_KEY = 'AIzaSyBkISvHGaJdHc88VlR4BVDcIE08as_OTSE';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -47,10 +49,50 @@ export async function analyzeWithGoogleVision(base64Image) {
     body: JSON.stringify(requestBody)
   });
 
-  if (!response.ok) throw new Error('Google Vision API failed');
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Google Vision API failed: ${response.status} - ${errorText}`);
+  }
   
   const data = await response.json();
+  if (data.responses[0].error) {
+    throw new Error(`Google Vision error: ${data.responses[0].error.message}`);
+  }
   return parseGoogleVisionResponse(data.responses[0]);
+}
+
+export async function analyzeWithDeepSeek(base64Image) {
+  const requestBody = {
+    model: 'deepseek-chat',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Analyze this plant leaf image and identify: 1) Crop type (Apple/Blueberry/Cherry/Corn/Grape/Orange/Peach/Pepper/Potato/Raspberry/Soybean/Squash/Strawberry/Tomato), 2) Disease name if any (scab/black rot/rust/blight/spot/mildew/mosaic virus/etc), 3) Is it healthy or diseased? Respond ONLY in JSON format: {"crop":"name","disease":"name or healthy","confidence":85}' },
+        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+      ]
+    }],
+    temperature: 0.3
+  };
+
+  const response = await fetch(DEEPSEEK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`DeepSeek API failed: ${response.status} - ${errorText}`);
+  }
+  
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(`DeepSeek error: ${data.error.message}`);
+  }
+  return parseDeepSeekResponse(data);
 }
 
 export async function analyzeWithGemini(base64Image) {
@@ -69,9 +111,15 @@ export async function analyzeWithGemini(base64Image) {
     body: JSON.stringify(requestBody)
   });
 
-  if (!response.ok) throw new Error('Gemini API failed');
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API failed: ${response.status} - ${errorText}`);
+  }
   
   const data = await response.json();
+  if (data.error) {
+    throw new Error(`Gemini error: ${data.error.message}`);
+  }
   return parseGeminiResponse(data);
 }
 
@@ -95,6 +143,28 @@ function parseGoogleVisionResponse(response) {
     labels: labels.slice(0, 5).map(l => l.description),
     crop: crop,
     disease: disease
+  };
+}
+
+function parseDeepSeekResponse(data) {
+  const content = data.choices[0].message.content;
+  const jsonMatch = content.match(/\{[\s\S]*?\}/);
+  const result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  
+  if (!result) throw new Error('Invalid response');
+  
+  const crop = result.crop || 'Plant';
+  const disease = result.disease || 'healthy';
+  const confidence = result.confidence || 75;
+  const isHealthy = disease.toLowerCase().includes('healthy');
+  
+  return {
+    detected: !isHealthy,
+    name: isHealthy ? `Healthy ${crop}` : `${crop} - ${disease}`,
+    confidence: confidence,
+    labels: [crop, disease],
+    crop: crop.toLowerCase(),
+    disease: disease.toLowerCase()
   };
 }
 

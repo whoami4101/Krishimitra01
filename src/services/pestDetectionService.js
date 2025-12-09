@@ -1,5 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import { analyzeWithGemini, analyzeWithGoogleVision } from './cloudVisionService';
+import { analyzeWithGemini, analyzeWithGoogleVision, analyzeWithDeepSeek } from './cloudVisionService';
 import NetInfo from '@react-native-community/netinfo';
 
 const API_URL = 'http://192.168.8.62:5000/predict';
@@ -30,44 +30,61 @@ const DISEASE_INFO = {
   'healthy': { severity: 'low', symptoms: ['No visible symptoms', 'Normal growth'], treatment: ['Continue regular care', 'Monitor regularly', 'Maintain good practices'] }
 };
 
-export async function analyzePestDisease(imageUri) {
+export async function analyzePestDisease(imageUri, mode = 'cloud') {
   const resized = await ImageManipulator.manipulateAsync(
     imageUri,
     [{ resize: { width: 224, height: 224 } }],
     { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
   );
 
-  const results = [];
+  // If local mode selected, use local model directly
+  if (mode === 'local') {
+    try {
+      const result = await analyzeWithLocalModel(resized.base64);
+      return { results: [result] };
+    } catch (error) {
+      throw new Error('Local model failed');
+    }
+  }
+
+  // Cloud mode - try APIs in sequence
   const netInfo = await NetInfo.fetch();
   
-  const promises = [];
-  
-  // 1. Google Cloud Vision
-  if (netInfo.isConnected) {
-    promises.push(
-      analyzeWithGoogleVision(resized.base64)
-        .then(r => formatCloudVisionResult(r, 'google_vision'))
-        .catch(e => ({ error: true, source: 'google_vision', message: e.message }))
-    );
+  if (!netInfo.isConnected) {
+    throw new Error('No internet connection. Please check your network or use local mode.');
   }
 
-  // 2. Gemini AI
-  if (netInfo.isConnected) {
-    promises.push(
-      analyzeWithGemini(resized.base64)
-        .then(r => formatCloudVisionResult(r, 'gemini'))
-        .catch(e => ({ error: true, source: 'gemini', message: e.message }))
-    );
+  // Try Google Cloud Vision first
+  try {
+    console.log('Trying Google Cloud Vision...');
+    const result = await analyzeWithGoogleVision(resized.base64);
+    console.log('Google Vision success');
+    return { results: [formatCloudVisionResult(result, 'google_vision')] };
+  } catch (error) {
+    console.log('Google Vision failed:', error.message);
   }
 
-  // 3. Local Model
-  promises.push(
-    analyzeWithLocalModel(resized.base64)
-      .catch(e => ({ error: true, source: 'local_model', message: e.message }))
-  );
+  // Try DeepSeek second
+  try {
+    console.log('Trying DeepSeek...');
+    const result = await analyzeWithDeepSeek(resized.base64);
+    console.log('DeepSeek success');
+    return { results: [formatCloudVisionResult(result, 'deepseek')] };
+  } catch (error) {
+    console.log('DeepSeek failed:', error.message);
+  }
 
-  const allResults = await Promise.all(promises);
-  return { results: allResults.filter(r => !r.error) };
+  // Try Gemini third
+  try {
+    console.log('Trying Gemini...');
+    const result = await analyzeWithGemini(resized.base64);
+    console.log('Gemini success');
+    return { results: [formatCloudVisionResult(result, 'gemini')] };
+  } catch (error) {
+    console.log('Gemini failed:', error.message);
+  }
+
+  throw new Error('All cloud APIs failed. Please try local mode.')
 }
 
 function formatCloudVisionResult(cloudResult, source) {
